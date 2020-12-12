@@ -219,6 +219,7 @@ TFX_NAMESPACE_PACKAGES = [
 ML_PIPELINES_SDK_PACKAGES = [
     # This adds `tfx.version` which is needed in several places.
     'tfx',
+    'tfx.components.*',
     # Core DSL subpackage.
     'tfx.dsl',
     'tfx.dsl.*',
@@ -228,6 +229,9 @@ ML_PIPELINES_SDK_PACKAGES = [
     'tfx.orchestration.config',
     'tfx.orchestration.launcher',
     'tfx.orchestration.local',
+    'tfx.orchestration.local.legacy',
+    'tfx.orchestration.portable',
+    'tfx.orchestration.portable.*',
     # Note that `tfx.proto` contains TFX first-party component-specific
     # protobuf definitions, but `tfx.proto.orchestration` contains portable
     # execution protobuf definitions which are needed in the base package.
