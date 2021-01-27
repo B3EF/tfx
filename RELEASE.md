@@ -23,8 +23,8 @@
     quantization_optimizations = [tf.lite.Optimize.DEFAULT] will perform the
     same type of quantization, dynamic range quantization. Users of the
     TFLITE_REWRITER who do not enable quantization should be uneffected.
-*   Deprecated input/output compatibility aliases for ExampleValidator and
-    Evaluator.
+*   Deprecated input/output compatibility aliases for ExampleValidator,
+    Evaluator and trainer.
 *   Default value for `infer_feature_shape` for SchemaGen changed from `False`
     to `True`, as indicated in previous release log. The inferred schema might
     change if you do not specify `infer_feature_shape`. It might leads to
@@ -94,6 +94,8 @@
     [new TFX package build instructions]
     (https://github.com/tensorflow/tfx/blob/master/package_build/README.md) to
     build wheels for TFX.
+    
+*   Deprecated input/output compatibility aliases for Trainer.
 
 ### For pipeline authors
 

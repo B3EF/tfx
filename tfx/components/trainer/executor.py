@@ -32,6 +32,10 @@ from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
+from tfx.types.standard_component_specs import BASE_MODEL_KEY
+from tfx.types.standard_component_specs import HYPERPARAMETERS_KEY
+from tfx.types.standard_component_specs import MODEL_KEY
+from tfx.types.standard_component_specs import MODEL_RUN_KEY
 from tfx.utils import deprecation_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
@@ -95,35 +99,35 @@ class GenericExecutor(base_executor.BaseExecutor):
                  output_dict: Dict[Text, List[types.Artifact]],
                  exec_properties: Dict[Text, Any]) -> fn_args_utils.FnArgs:
     # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
-    if input_dict.get(constants.BASE_MODEL_KEY):
+    if input_dict.get(BASE_MODEL_KEY):
       base_model = path_utils.serving_model_path(
-          artifact_utils.get_single_uri(input_dict[constants.BASE_MODEL_KEY]))
+          artifact_utils.get_single_uri(input_dict[BASE_MODEL_KEY]))
     else:
       base_model = None
 
-    if input_dict.get(constants.HYPERPARAMETERS_KEY):
+    if input_dict.get(HYPERPARAMETERS_KEY):
       hyperparameters_file = io_utils.get_only_uri_in_dir(
           artifact_utils.get_single_uri(
-              input_dict[constants.HYPERPARAMETERS_KEY]))
+              input_dict[HYPERPARAMETERS_KEY]))
       hyperparameters_config = json.loads(
           file_io.read_file_to_string(hyperparameters_file))
     else:
       hyperparameters_config = None
 
     output_path = artifact_utils.get_single_uri(
-        output_dict[constants.MODEL_KEY])
+        output_dict[MODEL_KEY])
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
 
     model_run_dir = artifact_utils.get_single_uri(
-        output_dict[constants.MODEL_RUN_KEY])
+        output_dict[MODEL_RUN_KEY])
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     result = fn_args_utils.get_common_fn_args(input_dict, exec_properties)
     if result.custom_config and not isinstance(result.custom_config, dict):
       raise ValueError('custom_config in execution properties needs to be a '
                        'dict. Got %s instead.' % type(result.custom_config))
-    result.transform_output = result.transform_graph_path
+    result.transform_graph = result.transform_graph_path
     result.serving_model_dir = serving_model_dir
     result.eval_model_dir = eval_model_dir
     result.model_run_dir = model_run_dir
@@ -146,7 +150,6 @@ class GenericExecutor(base_executor.BaseExecutor):
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
         - examples: Examples used for training, must include 'train' and 'eval'
           if custom splits is not specified in train_args and eval_args.
-        - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
         - model: Exported model.
@@ -216,7 +219,6 @@ class Executor(GenericExecutor):
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
         - examples: Examples used for training, must include 'train' and 'eval'
           if custom splits is not specified in train_args and eval_args.
-        - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
         - model: Exported model.

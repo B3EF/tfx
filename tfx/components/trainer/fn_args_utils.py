@@ -18,17 +18,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Callable, Dict, List, Iterator, Optional, Text, NamedTuple
+from typing import Any, Callable, Dict, Iterator, List, NamedTuple, Optional, Text
 
 import absl
 import attr
 import pyarrow as pa
 import tensorflow as tf
 from tfx import types
-from tfx.components.trainer import constants
 from tfx.components.util import tfxio_utils
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
+from tfx.types.standard_component_specs import CUSTOM_CONFIG_KEY
+from tfx.types.standard_component_specs import EVAL_ARGS_KEY
+from tfx.types.standard_component_specs import EXAMPLES_KEY
+from tfx.types.standard_component_specs import SCHEMA_KEY
+from tfx.types.standard_component_specs import TRAIN_ARGS_KEY
+from tfx.types.standard_component_specs import TRANSFORM_GRAPH_KEY
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
@@ -102,23 +107,23 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
                        exec_properties: Dict[Text, Any],
                        working_dir: Text = None) -> FnArgs:
   """Get common args of training and tuning."""
-  if input_dict.get(constants.TRANSFORM_GRAPH_KEY):
+  if input_dict.get(TRANSFORM_GRAPH_KEY):
     transform_graph_path = artifact_utils.get_single_uri(
-        input_dict[constants.TRANSFORM_GRAPH_KEY])
+        input_dict[TRANSFORM_GRAPH_KEY])
   else:
     transform_graph_path = None
 
-  if input_dict.get(constants.SCHEMA_KEY):
+  if input_dict.get(SCHEMA_KEY):
     schema_path = io_utils.get_only_uri_in_dir(
-        artifact_utils.get_single_uri(input_dict[constants.SCHEMA_KEY]))
+        artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
   else:
     schema_path = None
 
   train_args = trainer_pb2.TrainArgs()
   eval_args = trainer_pb2.EvalArgs()
-  proto_utils.json_to_proto(exec_properties[constants.TRAIN_ARGS_KEY],
+  proto_utils.json_to_proto(exec_properties[TRAIN_ARGS_KEY],
                             train_args)
-  proto_utils.json_to_proto(exec_properties[constants.EVAL_ARGS_KEY], eval_args)
+  proto_utils.json_to_proto(exec_properties[EVAL_ARGS_KEY], eval_args)
 
   # Default behavior is train on `train` split (when splits is empty in train
   # args) and evaluate on `eval` split (when splits is empty in eval args).
@@ -136,7 +141,7 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
     train_files.extend([
         io_utils.all_files_pattern(uri)
         for uri in artifact_utils.get_split_uris(
-            input_dict[constants.EXAMPLES_KEY], train_split)
+            input_dict[EXAMPLES_KEY], train_split)
     ])
 
   eval_files = []
@@ -144,14 +149,14 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
     eval_files.extend([
         io_utils.all_files_pattern(uri)
         for uri in artifact_utils.get_split_uris(
-            input_dict[constants.EXAMPLES_KEY], eval_split)
+            input_dict[EXAMPLES_KEY], eval_split)
     ])
 
   data_accessor = DataAccessor(
       tf_dataset_factory=tfxio_utils.get_tf_dataset_factory_from_artifact(
-          input_dict[constants.EXAMPLES_KEY], _TELEMETRY_DESCRIPTORS),
+          input_dict[EXAMPLES_KEY], _TELEMETRY_DESCRIPTORS),
       record_batch_factory=tfxio_utils.get_record_batch_factory_from_artifact(
-          input_dict[constants.EXAMPLES_KEY], _TELEMETRY_DESCRIPTORS))
+          input_dict[EXAMPLES_KEY], _TELEMETRY_DESCRIPTORS))
 
   # https://github.com/tensorflow/tfx/issues/45: Replace num_steps=0 with
   # num_steps=None.  Conversion of the proto to python will set the default
@@ -166,7 +171,7 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
   # json_utils.loads to 'null' then populate it with an empty dict when
   # needed.
   custom_config = json_utils.loads(
-      exec_properties.get(constants.CUSTOM_CONFIG_KEY, 'null'))
+      exec_properties.get(CUSTOM_CONFIG_KEY, 'null'))
 
   return FnArgs(
       working_dir=working_dir,

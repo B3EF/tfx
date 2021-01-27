@@ -25,12 +25,22 @@ import os
 import mock
 import tensorflow as tf
 from tfx.components.testdata.module_file import trainer_module
-from tfx.components.trainer import constants
 from tfx.components.trainer import executor
 from tfx.dsl.io import fileio
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types.standard_component_specs import BASE_MODEL_KEY
+from tfx.types.standard_component_specs import EVAL_ARGS_KEY
+from tfx.types.standard_component_specs import EXAMPLES_KEY
+from tfx.types.standard_component_specs import HYPERPARAMETERS_KEY
+from tfx.types.standard_component_specs import MODEL_KEY
+from tfx.types.standard_component_specs import MODEL_RUN_KEY
+from tfx.types.standard_component_specs import MODULE_FILE_KEY
+from tfx.types.standard_component_specs import SCHEMA_KEY
+from tfx.types.standard_component_specs import TRAIN_ARGS_KEY
+from tfx.types.standard_component_specs import TRAINER_FN_KEY
+from tfx.types.standard_component_specs import TRANSFORM_GRAPH_KEY
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
@@ -57,9 +67,9 @@ class ExecutorTest(tf.test.TestCase):
     self._single_artifact = [e1]
     self._multiple_artifacts = [e1, e2]
 
-    transform_output = standard_artifacts.TransformGraph()
-    transform_output.uri = os.path.join(self._source_data_dir,
-                                        'transform/transform_graph')
+    transform_graph = standard_artifacts.TransformGraph()
+    transform_graph.uri = os.path.join(self._source_data_dir,
+                                       'transform/transform_graph')
 
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(self._source_data_dir, 'schema_gen')
@@ -67,10 +77,10 @@ class ExecutorTest(tf.test.TestCase):
     previous_model.uri = os.path.join(self._source_data_dir, 'trainer/previous')
 
     self._input_dict = {
-        constants.EXAMPLES_KEY: self._single_artifact,
-        constants.TRANSFORM_GRAPH_KEY: [transform_output],
-        constants.SCHEMA_KEY: [schema],
-        constants.BASE_MODEL_KEY: [previous_model]
+        EXAMPLES_KEY: self._single_artifact,
+        TRANSFORM_GRAPH_KEY: [transform_graph],
+        SCHEMA_KEY: [schema],
+        BASE_MODEL_KEY: [previous_model]
     }
 
     # Create output dict.
@@ -81,21 +91,21 @@ class ExecutorTest(tf.test.TestCase):
     self._model_run_exports.uri = os.path.join(self._output_data_dir,
                                                'model_run_path')
     self._output_dict = {
-        constants.MODEL_KEY: [self._model_exports],
-        constants.MODEL_RUN_KEY: [self._model_run_exports]
+        MODEL_KEY: [self._model_exports],
+        MODEL_RUN_KEY: [self._model_run_exports]
     }
 
     # Create exec properties skeleton.
     self._exec_properties = {
-        'train_args':
+        TRAIN_ARGS_KEY:
             proto_utils.proto_to_json(trainer_pb2.TrainArgs(num_steps=1000)),
-        'eval_args':
+        EVAL_ARGS_KEY:
             proto_utils.proto_to_json(trainer_pb2.EvalArgs(num_steps=500)),
         'warm_starting':
             False,
     }
 
-    self._module_file = os.path.join(self._source_data_dir, 'module_file',
+    self._module_file = os.path.join(self._source_data_dir, MODULE_FILE_KEY,
                                      'trainer_module.py')
     self._trainer_fn = '%s.%s' % (trainer_module.trainer_fn.__module__,
                                   trainer_module.trainer_fn.__name__)
@@ -124,7 +134,7 @@ class ExecutorTest(tf.test.TestCase):
         exec_properties=self._exec_properties)
 
   def testGenericExecutor(self):
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[MODULE_FILE_KEY] = self._module_file
     self._do(self._generic_trainer_executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
@@ -132,7 +142,7 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch('tfx.components.trainer.executor._is_chief')
   def testDoChief(self, mock_is_chief):
     mock_is_chief.return_value = True
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[MODULE_FILE_KEY] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
@@ -140,19 +150,19 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch('tfx.components.trainer.executor._is_chief')
   def testDoNonChief(self, mock_is_chief):
     mock_is_chief.return_value = False
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[MODULE_FILE_KEY] = self._module_file
     self._do(self._trainer_executor)
     self._verify_no_eval_model_exports()
     self._verify_model_run_exports()
 
   def testDoWithModuleFile(self):
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[MODULE_FILE_KEY] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
 
   def testDoWithTrainerFn(self):
-    self._exec_properties['trainer_fn'] = self._trainer_fn
+    self._exec_properties[TRAINER_FN_KEY] = self._trainer_fn
     self._do(self._trainer_executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
@@ -174,16 +184,16 @@ class ExecutorTest(tf.test.TestCase):
         os.path.join(hp_artifact.uri, 'hyperparameters.txt'),
         json.dumps(hyperparameters))
 
-    self._input_dict[constants.HYPERPARAMETERS_KEY] = [hp_artifact]
+    self._input_dict[HYPERPARAMETERS_KEY] = [hp_artifact]
 
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[MODULE_FILE_KEY] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
 
   def testMultipleArtifacts(self):
-    self._input_dict[constants.EXAMPLES_KEY] = self._multiple_artifacts
-    self._exec_properties['module_file'] = self._module_file
+    self._input_dict[EXAMPLES_KEY] = self._multiple_artifacts
+    self._exec_properties[MODULE_FILE_KEY] = self._module_file
     self._do(self._generic_trainer_executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
@@ -202,15 +212,15 @@ class ExecutorTest(tf.test.TestCase):
     examples.uri = os.path.join(self._output_data_dir, 'data')
     examples.split_names = artifact_utils.encode_split_names(
         ['training', 'evaluating'])
-    self._input_dict[constants.EXAMPLES_KEY] = [examples]
+    self._input_dict[EXAMPLES_KEY] = [examples]
 
     # Update exec properties skeleton with custom splits.
-    self._exec_properties['train_args'] = proto_utils.proto_to_json(
+    self._exec_properties[TRAIN_ARGS_KEY] = proto_utils.proto_to_json(
         trainer_pb2.TrainArgs(splits=['training'], num_steps=1000))
-    self._exec_properties['eval_args'] = proto_utils.proto_to_json(
+    self._exec_properties[EVAL_ARGS_KEY] = proto_utils.proto_to_json(
         trainer_pb2.EvalArgs(splits=['evaluating'], num_steps=500))
 
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[MODULE_FILE_KEY] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
     self._verify_model_run_exports()

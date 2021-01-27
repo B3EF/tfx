@@ -19,13 +19,15 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
 
-from tfx.components.trainer import constants
+import tensorflow as tf
 from tfx.components.trainer import fn_args_utils
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types.standard_component_specs import EXAMPLES_KEY
+from tfx.types.standard_component_specs import SCHEMA_KEY
+from tfx.types.standard_component_specs import TRANSFORM_GRAPH_KEY
 from tfx.utils import proto_utils
 
 
@@ -49,9 +51,9 @@ class FnArgsUtilsTest(tf.test.TestCase):
     schema.uri = os.path.join(source_data_dir, 'schema_gen')
 
     input_dict = {
-        constants.EXAMPLES_KEY: [examples],
-        constants.TRANSFORM_GRAPH_KEY: [transform_output],
-        constants.SCHEMA_KEY: [schema],
+        EXAMPLES_KEY: [examples],
+        TRANSFORM_GRAPH_KEY: [transform_output],
+        SCHEMA_KEY: [schema],
     }
 
     # Create exec properties skeleton.
