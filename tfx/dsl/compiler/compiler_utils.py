@@ -23,7 +23,7 @@ from typing import List, Optional, Text, Type
 
 from tfx import types
 from tfx.dsl.components.base import base_node
-from tfx.dsl.components.common import importer_node
+from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver_node
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
@@ -97,7 +97,7 @@ def is_resolver(node: base_node.BaseNode) -> bool:
 
 def is_importer(node: base_node.BaseNode) -> bool:
   """Helper function to check if a TFX node is an ImporterNode."""
-  return isinstance(node, importer_node.ImporterNode)
+  return isinstance(node, importer.Importer)
 
 
 def ensure_topological_order(nodes: List[base_node.BaseNode]) -> bool:

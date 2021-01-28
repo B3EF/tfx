@@ -22,7 +22,7 @@ from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.components.common import importer_node
+from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver_node
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
@@ -256,7 +256,7 @@ class StepBuilder(object):
       task_spec.inputs.parameters[k].CopyFrom(v)
 
     # 3. Build the executor body for other common tasks.
-    if isinstance(self._node, importer_node.ImporterNode):
+    if isinstance(self._node, importer.Importer):
       executor.importer.CopyFrom(self._build_importer_spec())
     elif isinstance(self._node, components.FileBasedExampleGen):
       executor.container.CopyFrom(self._build_file_based_example_gen_spec())
@@ -375,19 +375,18 @@ class StepBuilder(object):
 
   def _build_importer_spec(self) -> ImporterSpec:
     """Builds ImporterSpec."""
-    assert isinstance(self._node, importer_node.ImporterNode)
+    assert isinstance(self._node, importer.Importer)
     result = ImporterSpec(
         properties=compiler_utils.convert_from_tfx_properties(
-            self._exec_properties[importer_node.PROPERTIES_KEY]),
+            self._exec_properties[importer.PROPERTIES_KEY]),
         custom_properties=compiler_utils.convert_from_tfx_properties(
-            self._exec_properties[importer_node.CUSTOM_PROPERTIES_KEY]))
-    result.reimport = bool(
-        self._exec_properties[importer_node.REIMPORT_OPTION_KEY])
+            self._exec_properties[importer.CUSTOM_PROPERTIES_KEY]))
+    result.reimport = bool(self._exec_properties[importer.REIMPORT_OPTION_KEY])
     result.artifact_uri.CopyFrom(
         compiler_utils.value_converter(
-            self._exec_properties[importer_node.SOURCE_URI_KEY]))
+            self._exec_properties[importer.SOURCE_URI_KEY]))
     single_artifact = artifact_utils.get_single_instance(
-        list(self._node.outputs[importer_node.IMPORT_RESULT_KEY].get()))
+        list(self._node.outputs[importer.IMPORT_RESULT_KEY].get()))
     result.type_schema.CopyFrom(
         pipeline_pb2.ArtifactTypeSchema(
             instance_schema=compiler_utils.get_artifact_schema(

@@ -18,13 +18,13 @@ import re
 from typing import cast
 
 from tfx import types
-from tfx.components.common_nodes import importer_node
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
+from tfx.dsl.components.common import importer
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
@@ -50,8 +50,8 @@ class Compiler(object):
   def __init__(self):
     pass
 
-  def _compile_importer_node_outputs(self, tfx_node: base_node.BaseNode,
-                                     node_pb: pipeline_pb2.PipelineNode):
+  def _compile_importer_outputs(self, tfx_node: base_node.BaseNode,
+                                node_pb: pipeline_pb2.PipelineNode):
     """Compiles the outputs of an importer node."""
     for key, value in tfx_node.outputs.items():
       output_spec = node_pb.outputs.outputs[key]
@@ -60,7 +60,7 @@ class Compiler(object):
 
       # Attach additional properties for artifacts produced by importer nodes.
       for property_name, property_value in tfx_node.exec_properties[
-          importer_node.PROPERTIES_KEY].items():
+          importer.PROPERTIES_KEY].items():
         _check_property_value_type(property_name, property_value, artifact_type)
         value_field = output_spec.artifact_spec.additional_properties[
             property_name].field_value
@@ -72,7 +72,7 @@ class Compiler(object):
                   tfx_node.id, property_name, type(property_value)))
 
       for property_name, property_value in tfx_node.exec_properties[
-          importer_node.CUSTOM_PROPERTIES_KEY].items():
+          importer.CUSTOM_PROPERTIES_KEY].items():
         value_field = output_spec.artifact_spec.additional_custom_properties[
             property_name].field_value
         try:
@@ -83,7 +83,9 @@ class Compiler(object):
                   tfx_node.id, property_name, type(property_value)))
 
   def _compile_node(
-      self, tfx_node: base_node.BaseNode, compile_context: _CompilerContext,
+      self,
+      tfx_node: base_node.BaseNode,
+      compile_context: _CompilerContext,
       deployment_config: pipeline_pb2.IntermediateDeploymentConfig,
       enable_cache: bool,
   ) -> pipeline_pb2.PipelineNode:
@@ -199,7 +201,7 @@ class Compiler(object):
     # TODO(b/170694459): Refactor special nodes as plugins.
     # Step 4.1: Special treament for Importer node
     if compiler_utils.is_importer(tfx_node):
-      self._compile_importer_node_outputs(tfx_node, node)
+      self._compile_importer_outputs(tfx_node, node)
 
     # Step 5: Node parameters
     if not compiler_utils.is_resolver(tfx_node):
@@ -209,8 +211,8 @@ class Compiler(object):
         # Ignore following two properties for a importer node, because they are
         # already attached to the artifacts produced by the importer node.
         if compiler_utils.is_importer(tfx_node) and (
-            key == importer_node.PROPERTIES_KEY or
-            key == importer_node.CUSTOM_PROPERTIES_KEY):
+            key == importer.PROPERTIES_KEY or
+            key == importer.CUSTOM_PROPERTIES_KEY):
           continue
         parameter_value = node.parameters.parameters[key]
 
@@ -324,15 +326,14 @@ class Compiler(object):
 def _iterates_resolver_cls_and_config(tfx_node: base_node.BaseNode):
   """Iterate through resolver class and configs that are bind to the node."""
   exec_properties = tfx_node.exec_properties
-  if (resolver_node.RESOLVER_CLASS in exec_properties
-      and resolver_node.RESOLVER_CONFIGS in exec_properties):
+  if (resolver_node.RESOLVER_CLASS in exec_properties and
+      resolver_node.RESOLVER_CONFIGS in exec_properties):
     yield (exec_properties[resolver_node.RESOLVER_CLASS],
            exec_properties[resolver_node.RESOLVER_CONFIGS])
-  elif (resolver_node.RESOLVER_CLASS_LIST in exec_properties
-        and resolver_node.RESOLVER_CONFIG_LIST in exec_properties):
-    yield from zip(
-        exec_properties[resolver_node.RESOLVER_CLASS_LIST],
-        exec_properties[resolver_node.RESOLVER_CONFIG_LIST])
+  elif (resolver_node.RESOLVER_CLASS_LIST in exec_properties and
+        resolver_node.RESOLVER_CONFIG_LIST in exec_properties):
+    yield from zip(exec_properties[resolver_node.RESOLVER_CLASS_LIST],
+                   exec_properties[resolver_node.RESOLVER_CONFIG_LIST])
   else:
     raise ValueError(f"Invalid ResolverNode exec_properties: {exec_properties}")
 
